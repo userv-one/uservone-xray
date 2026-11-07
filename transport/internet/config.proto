@@ -125,6 +125,8 @@ message SocketConfig {
   int32 tcp_keep_alive_interval = 10;
 
   int32 tcp_keep_alive_idle = 11;
+
+  int32 tcp_keep_alive_count = 24;
   
   string tcp_congestion = 12;
   

@@ -16,6 +16,15 @@ import (
 
 var effectiveListener = DefaultListener{}
 
+const (
+	defaultInboundKeepAliveIdle     = 60 * time.Second
+	defaultInboundKeepAliveInterval = 15 * time.Second
+)
+
+func listenerKeepAliveConfig(sockopt *SocketConfig) (net.KeepAliveConfig, error) {
+	return keepAliveConfig(sockopt, defaultInboundKeepAliveIdle, defaultInboundKeepAliveInterval)
+}
+
 type DefaultListener struct {
 	controllers []func(network, address string, c syscall.RawConn) error
 }
@@ -87,29 +96,18 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 		network = addr.Network()
 		address = addr.String()
 		lc.Control = getControlFunc(ctx, sockopt, dl.controllers)
-		// default disable keepalive
+		// Keepalive is managed by KeepAliveConfig; a negative legacy value disables
+		// the Go default without overriding an explicit KeepAliveConfig.
 		lc.KeepAlive = -1
+		keepAliveConfig, err := listenerKeepAliveConfig(sockopt)
+		if err != nil {
+			return nil, err
+		}
+		lc.KeepAliveConfig = keepAliveConfig
 		// MPTCP is enabled by default golang listener
 		// due to CVE-2026-98432, MPTCP should be disabled by default
 		lc.SetMultipathTCP(false)
 		if sockopt != nil {
-			if sockopt.TcpKeepAliveIdle*sockopt.TcpKeepAliveInterval < 0 {
-				return nil, errors.New("invalid TcpKeepAliveIdle or TcpKeepAliveInterval value: ", sockopt.TcpKeepAliveIdle, " ", sockopt.TcpKeepAliveInterval)
-			}
-			lc.KeepAliveConfig = net.KeepAliveConfig{
-				Enable:   false,
-				Idle:     -1,
-				Interval: -1,
-				Count:    -1,
-			}
-			if sockopt.TcpKeepAliveIdle > 0 {
-				lc.KeepAliveConfig.Enable = true
-				lc.KeepAliveConfig.Idle = time.Duration(sockopt.TcpKeepAliveIdle) * time.Second
-			}
-			if sockopt.TcpKeepAliveInterval > 0 {
-				lc.KeepAliveConfig.Enable = true
-				lc.KeepAliveConfig.Interval = time.Duration(sockopt.TcpKeepAliveInterval) * time.Second
-			}
 			lc.SetMultipathTCP(sockopt.TcpMptcp)
 		}
 	case *net.UnixAddr:

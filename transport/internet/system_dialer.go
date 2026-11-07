@@ -30,6 +30,10 @@ type DefaultSystemDialer struct {
 	obm outbound.Manager
 }
 
+func dialerKeepAliveConfig(sockopt *SocketConfig) (net.KeepAliveConfig, error) {
+	return keepAliveConfig(sockopt, 45*time.Second, 45*time.Second)
+}
+
 func resolveSrcAddr(network net.Network, src net.Address) net.Addr {
 	if src == nil || src == net.AnyIP {
 		return nil
@@ -113,27 +117,13 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 		}, nil
 	}
 	// Chrome defaults
-	keepAliveConfig := net.KeepAliveConfig{
-		Enable:   true,
-		Idle:     45 * time.Second,
-		Interval: 45 * time.Second,
-		Count:    -1,
+	keepAliveConfig, err := dialerKeepAliveConfig(sockopt)
+	if err != nil {
+		return nil, err
 	}
 	keepAlive := time.Duration(0)
-	if sockopt != nil {
-		if sockopt.TcpKeepAliveIdle*sockopt.TcpKeepAliveInterval < 0 {
-			return nil, errors.New("invalid TcpKeepAliveIdle or TcpKeepAliveInterval value: ", sockopt.TcpKeepAliveIdle, " ", sockopt.TcpKeepAliveInterval)
-		}
-		if sockopt.TcpKeepAliveIdle < 0 || sockopt.TcpKeepAliveInterval < 0 {
-			keepAlive = -1
-			keepAliveConfig.Enable = false
-		}
-		if sockopt.TcpKeepAliveIdle > 0 {
-			keepAliveConfig.Idle = time.Duration(sockopt.TcpKeepAliveIdle) * time.Second
-		}
-		if sockopt.TcpKeepAliveInterval > 0 {
-			keepAliveConfig.Interval = time.Duration(sockopt.TcpKeepAliveInterval) * time.Second
-		}
+	if !keepAliveConfig.Enable {
+		keepAlive = -1
 	}
 	dialer := &net.Dialer{
 		Timeout:         time.Second * 16,
