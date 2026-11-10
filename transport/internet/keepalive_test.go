@@ -61,8 +61,8 @@ func TestDialerKeepAliveCountOverride(t *testing.T) {
 	if config.Count != 7 {
 		t.Fatalf("probe count is %d, want 7", config.Count)
 	}
-	if config.Idle != 45*time.Second || config.Interval != 45*time.Second {
-		t.Fatalf("Chrome-compatible defaults changed: idle=%v interval=%v", config.Idle, config.Interval)
+	if config.Idle != 60*time.Second || config.Interval != 15*time.Second {
+		t.Fatalf("uservone defaults changed: idle=%v interval=%v", config.Idle, config.Interval)
 	}
 }
 

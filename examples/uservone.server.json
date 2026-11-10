@@ -35,24 +35,44 @@
       }
     },
     {
-      "tag": "shadowsocks-2022",
+      "tag": "ss-in",
       "listen": "0.0.0.0",
-      "port": 8443,
+      "port": 8388,
       "protocol": "shadowsocks",
       "settings": {
         "method": "2022-blake3-aes-128-gcm",
         "password": "BmtPW3egtT7pVAK9wpRzlg==",
         "network": "tcp,udp"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveIdle": 60,
+          "tcpKeepAliveInterval": 15,
+          "tcpKeepAliveCount": 5
+        }
       }
     },
     {
-      "tag": "local-socks5",
+      "tag": "socks-in",
       "listen": "127.0.0.1",
       "port": 1080,
       "protocol": "socks",
       "settings": {
-        "auth": "noauth",
+        "auth": "password",
+        "accounts": [
+          {
+            "user": "f1474e069739465d",
+            "pass": "0739beac2d74457e"
+          }
+        ],
         "udp": true
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveIdle": 60,
+          "tcpKeepAliveInterval": 15,
+          "tcpKeepAliveCount": 5
+        }
       }
     }
   ],

@@ -10,10 +10,11 @@ uservone Xray tracks [XTLS/Xray-core](https://github.com/XTLS/Xray-core) and kee
 
 ## Changes from upstream
 
-- TCP keepalive is enabled by default for every TCP inbound, including VLESS+Reality, Shadowsocks, and SOCKS5. The defaults are 60 seconds before the first probe and 15 seconds between probes.
+- TCP keepalive is enabled by default for every TCP inbound and outbound, including VLESS+Reality, Shadowsocks, and SOCKS5. The defaults are 60 seconds before the first probe and 15 seconds between probes.
 - `sockopt.tcpKeepAliveCount` configures the number of unanswered probes before the operating system drops a connection. It works for both inbound and outbound TCP connections.
 - Existing `tcpKeepAliveIdle` and `tcpKeepAliveInterval` values override the corresponding defaults. Setting either value to a negative number disables keepalive for that listener or dialer; mixed signs are rejected.
-- `xray version` identifies the binary as `uservone Xray` while retaining the XTLS upstream version and build revision.
+- `xray version` identifies the binary as `uservone Xray` while retaining the XTLS upstream version and build revision. `xray version-json` exposes the same information as machine-readable JSON.
+- SOCKS `auth` is mandatory and `password` requires at least one account; missing or unknown authentication settings no longer fall back to `noauth`.
 
 No VLESS, REALITY, Shadowsocks, or SOCKS wire formats are changed. The new protobuf field uses number 24 and is additive.
 
@@ -35,7 +36,7 @@ Omit `sockopt` to use the fork defaults. A zero or negative `tcpKeepAliveCount` 
 
 ## Example server
 
-`examples/uservone.server.json` contains VLESS+Reality on port 443, Shadowsocks 2022 on port 8443, and a loopback-only SOCKS5 inbound on port 1080.
+`examples/uservone.server.json` contains VLESS+Reality on port 443, Shadowsocks 2022 with TCP and UDP on port 8388, and a loopback-only authenticated SOCKS5 inbound with UDP on port 1080.
 
 The UUID and keys in that file are public demonstration values. Replace them before deployment:
 

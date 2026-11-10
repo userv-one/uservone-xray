@@ -63,10 +63,36 @@ func Version() string {
 	return fmt.Sprintf("%v.%v.%v", Version_x, Version_y, Version_z)
 }
 
+// VersionInfo contains machine-readable build information.
+type VersionInfo struct {
+	Name      string `json:"name"`
+	Version   string `json:"version"`
+	Codename  string `json:"codename"`
+	Build     string `json:"build"`
+	GoVersion string `json:"go_version"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+	Upstream  string `json:"upstream"`
+}
+
+func VersionDetails() VersionInfo {
+	return VersionInfo{
+		Name:      "uservone Xray",
+		Version:   Version(),
+		Codename:  codename,
+		Build:     build,
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+		Upstream:  "XTLS/Xray-core",
+	}
+}
+
 // VersionStatement returns a list of strings representing the full version info.
 func VersionStatement() []string {
+	info := VersionDetails()
 	return []string{
-		serial.Concat("uservone Xray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
+		serial.Concat(info.Name, " ", info.Version, " (", info.Codename, ") ", info.Build, " (", info.GoVersion, " ", info.OS, "/", info.Arch, ")"),
 		intro,
 	}
 }

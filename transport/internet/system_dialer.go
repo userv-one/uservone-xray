@@ -31,7 +31,7 @@ type DefaultSystemDialer struct {
 }
 
 func dialerKeepAliveConfig(sockopt *SocketConfig) (net.KeepAliveConfig, error) {
-	return keepAliveConfig(sockopt, 45*time.Second, 45*time.Second)
+	return keepAliveConfig(sockopt, 60*time.Second, 15*time.Second)
 }
 
 func resolveSrcAddr(network net.Network, src net.Address) net.Addr {
@@ -116,7 +116,7 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 			Dest:       destAddr,
 		}, nil
 	}
-	// Chrome defaults
+	// uservone defaults
 	keepAliveConfig, err := dialerKeepAliveConfig(sockopt)
 	if err != nil {
 		return nil, err

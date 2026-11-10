@@ -42,7 +42,7 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Outbound, error) {
 
 	pskList, err := ParsePSKList(config.Key, method.KeySaltLength)
 	if err != nil {
-		return nil, errors.New("invalid key: ", config.Key).Base(err)
+		return nil, errors.New("invalid key").Base(err)
 	}
 
 	if method.IsChaCha && len(pskList) > 1 {

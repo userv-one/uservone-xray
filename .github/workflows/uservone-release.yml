@@ -1,0 +1,152 @@
+name: uservone release
+
+on:
+  push:
+    tags:
+      - 'v*-uservone.*'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Download dependencies
+        run: go mod download
+      - name: Download geodata
+        run: |
+          mkdir -p resources
+          curl -fLsS https://raw.githubusercontent.com/XTLS/Xray-rules-dat/release/geoip/geoip-lite.dat -o resources/geoip.dat
+          curl -fLsS https://raw.githubusercontent.com/XTLS/Xray-rules-dat/release/geosite/geosite.dat -o resources/geosite.dat
+          curl -fLsS https://raw.githubusercontent.com/XTLS/Xray-rules-dat/release/geoip/geoip-lite.dat.sha256sum -o resources/geoip.expected
+          curl -fLsS https://raw.githubusercontent.com/XTLS/Xray-rules-dat/release/geosite/geosite.dat.sha256sum -o resources/geosite.expected
+          test "$(sha256sum resources/geoip.dat | awk '{print $1}')" = "$(awk '{print $1}' resources/geoip.expected)"
+          test "$(sha256sum resources/geosite.dat | awk '{print $1}')" = "$(awk '{print $1}' resources/geosite.expected)"
+      - name: Test full project
+        run: go test ./...
+      - name: Validate configurations
+        run: |
+          go run ./main run -test -config examples/uservone.server.json
+          go run ./main run -test -config examples/uservone.vless-reality.client.json
+      - name: Check version-json
+        run: go run ./main version-json
+      - name: Build host binary
+        run: |
+          mkdir -p build_assets
+          CGO_ENABLED=0 go build -o build_assets/uservone-xray-host -trimpath -buildvcs=true ./main
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
+    env:
+      GOOS: linux
+      CGO_ENABLED: 0
+      GOARCH: ${{ matrix.goarch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Download dependencies
+        run: go mod download
+      - name: Build Linux binary
+        run: |
+          mkdir -p dist
+          go build -o "dist/uservone-xray-linux-${GOARCH}" -trimpath -buildvcs=false -ldflags="-X github.com/xtls/xray-core/core.build=${GITHUB_SHA::7} -s -w -buildid=" ./main
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: uservone-xray-linux-${{ matrix.goarch }}
+          path: dist/uservone-xray-linux-${{ matrix.goarch }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    permissions:
+      contents: write
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Download binaries
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Generate and verify checksums
+        run: |
+          cd dist
+          chmod 0755 uservone-xray-linux-*
+          sha256sum uservone-xray-linux-amd64 uservone-xray-linux-arm64 > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Generate buildinfo.json
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          UPSTREAM_COMMIT: 1c8bf4067b881e5f21442882013d0617e4d5dc6d
+        run: |
+          export VERSION_JSON="$(go run ./main version-json)"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import subprocess
+          from pathlib import Path
+
+          root = Path('dist')
+          artifacts = {}
+          for name in ('uservone-xray-linux-amd64', 'uservone-xray-linux-arm64'):
+              artifacts[name] = hashlib.sha256((root / name).read_bytes()).hexdigest()
+          info = {
+              'name': 'uservone Xray',
+              'version': json.loads(os.environ['VERSION_JSON'])['version'],
+              'release_tag': os.environ['RELEASE_TAG'],
+              'commit': os.environ['RELEASE_COMMIT'],
+              'upstream': {
+                  'repository': 'https://github.com/XTLS/Xray-core',
+                  'commit': os.environ['UPSTREAM_COMMIT'],
+              },
+              'go_version': subprocess.check_output(['go', 'version'], text=True).strip(),
+              'host_platform': platform.system().lower(),
+              'artifacts': artifacts,
+              'wire_compatibility': ['VLESS', 'REALITY', 'XTLS Vision', 'Shadowsocks 2022', 'SOCKS5'],
+          }
+          (root / 'buildinfo.json').write_text(json.dumps(info, indent=2, sort_keys=True) + '\n')
+          PY
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          path: ./
+          format: spdx-json
+          output-file: dist/uservone-xray-sbom.spdx.json
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: ${{ github.ref_name }}
+          body_path: docs/releases/${{ github.ref_name }}.md
+          draft: false
+          prerelease: false
+          files: dist/*

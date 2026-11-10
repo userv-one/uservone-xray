@@ -4,7 +4,7 @@ Protocol-compatible [Xray-core](https://github.com/XTLS/Xray-core) fork maintain
 
 ## Fork features
 
-- TCP keepalive enabled by default for every TCP inbound: 60 seconds idle, then one probe every 15 seconds.
+- TCP keepalive enabled by default for every TCP inbound and outbound: 60 seconds idle, then one probe every 15 seconds.
 - Existing `tcpKeepAliveIdle` and `tcpKeepAliveInterval` settings can override the defaults.
 - Additional `tcpKeepAliveCount` setting controls unanswered probes for inbound and outbound TCP connections.
 - Consistent listener/dialer validation without integer overflow on extreme values.
@@ -21,6 +21,7 @@ git clone https://github.com/userv-one/uservone-xray.git
 cd uservone-xray
 CGO_ENABLED=0 go build -o xray -trimpath -buildvcs=true -ldflags="-s -w" ./main
 ./xray version
+./xray version-json
 ```
 
 On Windows, build `xray.exe` and run `.\xray.exe version`.
@@ -52,8 +53,10 @@ See [uservone.md](uservone.md) for detailed defaults, compatibility notes, and u
 [`examples/uservone.server.json`](examples/uservone.server.json) contains:
 
 - VLESS + XTLS Vision + REALITY on TCP port 443;
-- Shadowsocks 2022 on port 8443;
-- loopback-only SOCKS5 on port 1080.
+- Shadowsocks 2022 with TCP and UDP on port 8388;
+- loopback-only SOCKS5 with mandatory username/password authentication and UDP on port 1080.
+
+The VLESS client fixture and subscription examples also cover REALITY public key/short ID, SNI, fingerprint, `packetEncoding=xudp`, and the SIP002 Shadowsocks format.
 
 Validate it without opening listeners:
 
@@ -62,6 +65,10 @@ go run ./main run -test -config examples/uservone.server.json
 ```
 
 The example contains public demonstration UUIDs and keys. Generate new values with `xray uuid`, `xray x25519`, and `openssl rand -base64 16` before deployment.
+
+## Releases
+
+Tagged releases build Linux AMD64 and ARM64 binaries, `SHA256SUMS`, `buildinfo.json`, and an SPDX SBOM. See the [v26.10.31-uservone.1 migration and rollback notes](docs/releases/v26.10.31-uservone.1.md).
 
 ## Development checks
 
