@@ -1,0 +1,86 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "vless-reality",
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f1474e06-9739-465d-9d3b-ca71955f8896",
+            "flow": "xtls-rprx-vision",
+            "email": "demo@userv.one"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "target": "www.cloudflare.com:443",
+          "minClientVer": "1.0.0",
+          "serverNames": ["www.cloudflare.com"],
+          "privateKey": "KC0cW1KxZJKfFkf5SPlH16mSkWf300voWmGQ90xKGls",
+          "shortIds": ["0123456789abcdef"]
+        },
+        "sockopt": {
+          "tcpKeepAliveIdle": 20,
+          "tcpKeepAliveInterval": 15,
+          "tcpKeepAliveCount": 4
+        }
+      }
+    },
+    {
+      "tag": "ss-in",
+      "listen": "0.0.0.0",
+      "port": 8388,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "2022-blake3-aes-128-gcm",
+        "password": "BmtPW3egtT7pVAK9wpRzlg==",
+        "network": "tcp,udp"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveIdle": 20,
+          "tcpKeepAliveInterval": 15,
+          "tcpKeepAliveCount": 4
+        }
+      }
+    },
+    {
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 1080,
+      "protocol": "socks",
+      "settings": {
+        "auth": "password",
+        "accounts": [
+          {
+            "user": "f1474e069739465d",
+            "pass": "0739beac2d74457e"
+          }
+        ],
+        "udp": true
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveIdle": 20,
+          "tcpKeepAliveInterval": 15,
+          "tcpKeepAliveCount": 4
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    }
+  ]
+}

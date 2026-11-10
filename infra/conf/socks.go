@@ -44,12 +44,14 @@ func (v *SocksServerConfig) Build() (proto.Message, error) {
 	case AuthMethodUserPass:
 		config.AuthType = socks.AuthType_PASSWORD
 	default:
-		// errors.New("unknown socks auth method: ", v.AuthMethod, ". Default to noauth.").AtWarning().WriteToLog()
-		config.AuthType = socks.AuthType_NO_AUTH
+		return nil, errors.New("SOCKS settings: auth must be explicitly noauth or password")
 	}
 
 	if v.Accounts != nil {
 		v.Users = v.Accounts
+	}
+	if config.AuthType == socks.AuthType_PASSWORD && len(v.Users) == 0 {
+		return nil, errors.New("SOCKS settings: password authentication requires at least one account")
 	}
 	// TODO: PB
 	if len(v.Users) > 0 {

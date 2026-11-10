@@ -26,7 +26,7 @@ var (
 var (
 	build    = "Custom"
 	codename = "Xray, Penetrates Everything."
-	intro    = "A unified platform for anti-censorship."
+	intro    = "uservone keepalive patch; wire-compatible with Xray 26.7.28."
 )
 
 func init() {
@@ -63,10 +63,42 @@ func Version() string {
 	return fmt.Sprintf("%v.%v.%v", Version_x, Version_y, Version_z)
 }
 
+// VersionInfo contains machine-readable build and compatibility information.
+type VersionInfo struct {
+	Name              string   `json:"name"`
+	Version           string   `json:"version"`
+	Upstream          string   `json:"upstream"`
+	UpstreamCommit    string   `json:"upstream_commit"`
+	Fork              string   `json:"fork"`
+	Build             string   `json:"build"`
+	GoVersion         string   `json:"go_version"`
+	OS                string   `json:"os"`
+	Arch              string   `json:"arch"`
+	WireCompatibility []string `json:"wire_compatibility"`
+}
+
+func VersionDetails() VersionInfo {
+	return VersionInfo{
+		Name:           "uservone Xray " + Version(),
+		Version:        Version(),
+		Upstream:       "XTLS/Xray-core",
+		UpstreamCommit: "5ca6f4b7d4dc20a881d4330e498892697627ec0c",
+		Fork:           "uservone-keepalive.1",
+		Build:          build,
+		GoVersion:      runtime.Version(),
+		OS:             runtime.GOOS,
+		Arch:           runtime.GOARCH,
+		WireCompatibility: []string{
+			"VLESS", "REALITY", "XTLS Vision", "Shadowsocks 2022", "SOCKS5",
+		},
+	}
+}
+
 // VersionStatement returns a list of strings representing the full version info.
 func VersionStatement() []string {
+	details := VersionDetails()
 	return []string{
-		serial.Concat("Xray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
+		serial.Concat("Xray ", details.Version, " (", codename, ") ", details.UpstreamCommit[:7], " (", details.GoVersion, " ", details.OS, "/", details.Arch, ")"),
 		intro,
 	}
 }

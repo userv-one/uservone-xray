@@ -1,6 +1,7 @@
 package conf_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/xtls/xray-core/common/net"
@@ -110,4 +111,24 @@ func TestSocksOutboundConfig(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestSocksInboundRejectsImplicitNoAuth(t *testing.T) {
+	var config SocksServerConfig
+	if err := json.Unmarshal([]byte(`{}`), &config); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := config.Build(); err == nil {
+		t.Fatal("missing SOCKS auth must not silently enable noauth")
+	}
+}
+
+func TestSocksInboundRejectsPasswordWithoutAccounts(t *testing.T) {
+	var config SocksServerConfig
+	if err := json.Unmarshal([]byte(`{"auth":"password"}`), &config); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := config.Build(); err == nil {
+		t.Fatal("password authentication requires at least one account")
+	}
 }

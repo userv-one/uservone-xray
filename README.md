@@ -1,249 +1,94 @@
-# Project X
+# uservone Xray legacy
 
-[Project X](https://github.com/XTLS) originates from XTLS protocol, providing a set of network tools such as [Xray-core](https://github.com/XTLS/Xray-core) and [REALITY](https://github.com/XTLS/REALITY).
+Minimal production-safe [Xray-core](https://github.com/XTLS/Xray-core) fork based on **v26.7.28**, the version already deployed on userv.one nodes. This branch is independent from `uservone-core` and intentionally does not follow newer upstream releases.
 
-[README](https://github.com/XTLS/Xray-core#readme) is open, so feel free to submit your project [here](https://github.com/XTLS/Xray-core/pulls).
+## Provenance and compatibility
 
-## Sponsors
+- Upstream: `https://github.com/XTLS/Xray-core.git`
+- Baseline tag: `v26.7.28`
+- Baseline commit: `5ca6f4b7d4dc20a881d4330e498892697627ec0c`
+- License: Mozilla Public License 2.0
 
-[![Remnawave](https://github.com/user-attachments/assets/a22d34ae-01ee-441c-843a-85356748ed1e)](https://docs.rw)
+VLESS, REALITY, XTLS Vision, Shadowsocks 2022, and SOCKS5 wire behavior is unchanged. REALITY `minClientVer`, uTLS fingerprints, subscription formats, and client profiles are not modified.
 
-[![Happ](https://github.com/user-attachments/assets/14055dab-e8bb-48bd-89e8-962709e4098e)](https://happ.su)
+## Fork changes
 
-[![BlancVPN](https://github.com/user-attachments/assets/9145ea7d-5da3-446e-8143-710dba4292c3)](https://blanc.link/VMTSDqW)
+- TCP keepalive defaults for inbound and outbound: 60 seconds idle, then a probe every 15 seconds.
+- `tcpKeepAliveIdle`, `tcpKeepAliveInterval`, and the additive `tcpKeepAliveCount` socket options.
+- `xray version-json` with machine-readable fork, upstream, build, runtime, and wire-compatibility metadata.
+- Explicit SOCKS authentication: missing or unknown `auth` is rejected, and `password` requires at least one account. Explicit `noauth` remains available for trusted loopback configurations.
 
-[**Sponsor Xray-core**](https://github.com/XTLS/Xray-core/issues/3668)
+The legacy text banner still starts with `Xray 26.7.28` for existing deployment checks. New automation should use `version-json` instead.
 
-## Donation & NFTs
+## Build
 
-### [Collect a Project X NFT to support the development of Project X!](https://opensea.io/item/ethereum/0x5ee362866001613093361eb8569d59c4141b76d1/1)
+Go 1.26 or the compatible toolchain declared in `go.mod` is required.
 
-[<img alt="Project X NFT" width="150px" src="https://raw2.seadn.io/ethereum/0x5ee362866001613093361eb8569d59c4141b76d1/7fa9ce900fb39b44226348db330e32/8b7fa9ce900fb39b44226348db330e32.svg" />](https://opensea.io/item/ethereum/0x5ee362866001613093361eb8569d59c4141b76d1/1)
+```bash
+git clone -b v26.7.28-uservone https://github.com/userv-one/uservone-xray.git
+cd uservone-xray
+CGO_ENABLED=0 go build -o xray -trimpath -buildvcs=true -ldflags="-s -w" ./main
+./xray version
+./xray version-json
+```
 
-- **TRX(Tron)/USDT/USDC: `TNrDh5VSfwd4RPrwsohr6poyNTfFefNYan`**
-- **TON: `UQApeV-u2gm43aC1uP76xAC1m6vCylstaN1gpfBmre_5IyTH`**
-- **BTC: `1JpqcziZZuqv3QQJhZGNGBVdCBrGgkL6cT`**
-- **XMR: `4ABHQZ3yJZkBnLoqiKvb3f8eqUnX4iMPb6wdant5ZLGQELctcerceSGEfJnoCk6nnyRZm73wrwSgvZ2WmjYLng6R7sR67nq`**
-- **SOL/USDT/USDC: `3x5NuXHzB5APG6vRinPZcsUv5ukWUY1tBGRSJiEJWtZa`**
-- **ETH/USDT/USDC: `0xDc3Fe44F0f25D13CACb1C4896CD0D321df3146Ee`**
-- **Project X NFT: https://opensea.io/item/ethereum/0x5ee362866001613093361eb8569d59c4141b76d1/1**
-- **VLESS NFT: https://opensea.io/collection/vless**
-- **REALITY NFT: https://opensea.io/item/ethereum/0x5ee362866001613093361eb8569d59c4141b76d1/2**
-- **Related links: [VLESS Post-Quantum Encryption](https://github.com/XTLS/Xray-core/pull/5067), [XHTTP: Beyond REALITY](https://github.com/XTLS/Xray-core/discussions/4113), [Announcement of NFTs by Project X](https://github.com/XTLS/Xray-core/discussions/3633)**
+On Windows, use `xray.exe` and `.\xray.exe`.
+
+## Production socket overrides
+
+The fork defaults are overridden by existing uservone-platform values, so current node behavior is preserved:
+
+```json
+{
+  "streamSettings": {
+    "sockopt": {
+      "tcpKeepAliveIdle": 20,
+      "tcpKeepAliveInterval": 15,
+      "tcpKeepAliveCount": 4,
+      "tcpUserTimeout": 15000,
+      "tcpNoDelay": true
+    }
+  }
+}
+```
+
+Negative idle/interval values disable keepalive when neither value is positive; a negative value paired with zero also disables it. Mixed negative and positive values are rejected. A non-positive count leaves the operating-system default unchanged.
+
+## Examples
+
+- `examples/uservone.server.json`: VLESS+Reality with `minClientVer: 1.0.0`, Shadowsocks 2022 TCP+UDP on 8388, and authenticated SOCKS5 with UDP on 1080.
+- `examples/uservone.vless-reality.client.json`: Vision, REALITY public key/short ID, SNI, fingerprint, and socket overrides.
+- `examples/uservone.vless-reality.url`: XTLS-standard `pbk/sid/fp/sni/spx` parameters and `packetEncoding=xudp`.
+- `examples/uservone.shadowsocks.url`: legacy uservone-platform SIP002 form.
+- `examples/uservone.shadowsocks-aead2022.url`: standards-compliant AEAD-2022 external example.
+
+Validate configurations without opening listeners:
+
+```bash
+go run ./main run -test -config examples/uservone.server.json
+go run ./main run -test -config examples/uservone.vless-reality.client.json
+```
+
+Examples contain public demonstration keys and credentials; replace them with production values from the platform before deployment.
+
+## Verification
+
+```bash
+go test ./...
+go test ./transport/internet ./infra/conf ./core ./proxy/socks ./proxy/shadowsocks_2022
+go vet ./...
+```
+
+Some upstream tests require `resources/geoip.dat` and `resources/geosite.dat`; the release workflow downloads and verifies them.
+
+Release gating additionally requires A/B loopback checks against upstream v26.7.28 with sing-box 1.14.2 and 1.14.4 returning HTTP 204. Any REALITY verification failure blocks publication.
+
+## Release and migration
+
+The release tag is `v26.7.28-uservone.1`. Assets include Linux AMD64/ARM64 binaries, `SHA256SUMS`, `buildinfo.json`, and an SPDX SBOM.
+
+Read [migration and rollback notes](docs/releases/v26.7.28-uservone.1.md) before the canary deployment. Do not enable this release fleet-wide before canary and sing-box/Throne compatibility checks pass.
 
 ## License
 
-[Mozilla Public License Version 2.0](https://github.com/XTLS/Xray-core/blob/main/LICENSE)
-
-## Documentation
-
-[Project X Official Website](https://xtls.github.io)
-
-## Telegram
-
-[Project X](https://t.me/projectXray)
-
-[Project X Channel](https://t.me/projectXtls)
-
-[Project VLESS](https://t.me/projectVless) (Русский)
-
-[Project XHTTP](https://t.me/projectXhttp) (Persian)
-
-## Installation
-
-- Linux Script
-  - [XTLS/Xray-install](https://github.com/XTLS/Xray-install) (**Official**)
-  - [tempest](https://github.com/team-cloudchaser/tempest) (supports [`systemd`](https://systemd.io) and [OpenRC](https://github.com/OpenRC/openrc); Linux-only)
-- Docker
-  - [ghcr.io/xtls/xray-core](https://ghcr.io/xtls/xray-core) (**Official**)
-  - [teddysun/xray](https://hub.docker.com/r/teddysun/xray)
-  - [wulabing/xray_docker](https://github.com/wulabing/xray_docker)
-- Web Panel
-  - [Remnawave](https://github.com/remnawave/panel)
-  - [3X-UI](https://github.com/MHSanaei/3x-ui)
-  - [PasarGuard](https://github.com/PasarGuard/panel)
-  - [Xray-UI](https://github.com/qist/xray-ui)
-  - [X-Panel](https://github.com/xeefei/X-Panel)
-  - [Marzban](https://github.com/Gozargah/Marzban)
-  - [Hiddify](https://github.com/hiddify/Hiddify-Manager)
-  - [TX-UI](https://github.com/AghayeCoder/tx-ui)
-  - [CELERITY](https://github.com/ClickDevTech/CELERITY-panel)
-- One Click
-  - [Xray-REALITY](https://github.com/zxcvos/Xray-script), [xray-reality](https://github.com/sajjaddg/xray-reality), [reality-ezpz](https://github.com/aleskxyz/reality-ezpz)
-  - [Xray_bash_onekey](https://github.com/hello-yunshu/Xray_bash_onekey), [XTool](https://github.com/LordPenguin666/XTool), [VPainLess](https://github.com/vpainless/vpainless)
-  - [v2ray-agent](https://github.com/mack-a/v2ray-agent), [Xray_onekey](https://github.com/wulabing/Xray_onekey), [ProxySU](https://github.com/proxysu/ProxySU)
-- Magisk
-  - [Magic_V2Ray](https://github.com/vincentng295/Magic_V2Ray)
-  - [Xray_For_Magisk](https://github.com/E7KMbb/Xray_For_Magisk)
-- Homebrew
-  - `brew install xray`
-
-## Usage
-
-- Example
-  - [VLESS-XTLS-uTLS-REALITY](https://github.com/XTLS/REALITY#readme)
-  - [VLESS-TCP-XTLS-Vision](https://github.com/XTLS/Xray-examples/tree/main/VLESS-TCP-XTLS-Vision)
-  - [All-in-One-fallbacks-Nginx](https://github.com/XTLS/Xray-examples/tree/main/All-in-One-fallbacks-Nginx)
-- Xray-examples
-  - [XTLS/Xray-examples](https://github.com/XTLS/Xray-examples)
-  - [chika0801/Xray-examples](https://github.com/chika0801/Xray-examples)
-  - [lxhao61/integrated-examples](https://github.com/lxhao61/integrated-examples)
-- Tutorial
-  - [XTLS Vision](https://github.com/chika0801/Xray-install)
-  - [REALITY (English)](https://cscot.pages.dev/2023/03/02/Xray-REALITY-tutorial/)
-  - [XTLS-Iran-Reality (English)](https://github.com/SasukeFreestyle/XTLS-Iran-Reality)
-  - [Xray REALITY with 'steal oneself' (English)](https://computerscot.github.io/vless-xtls-utls-reality-steal-oneself.html)
-  - [Xray with WireGuard inbound (English)](https://g800.pages.dev/wireguard)
-
-## GUI Clients
-
-- OpenWrt
-  - [PassWall](https://github.com/Openwrt-Passwall/openwrt-passwall), [PassWall 2](https://github.com/Openwrt-Passwall/openwrt-passwall2)
-  - [ShadowSocksR Plus+](https://github.com/fw876/helloworld)
-  - [luci-app-xray](https://github.com/yichya/luci-app-xray) ([openwrt-xray](https://github.com/yichya/openwrt-xray))
-- Asuswrt-Merlin
-  - [XRAYUI](https://github.com/DanielLavrushin/asuswrt-merlin-xrayui)
-  - [fancyss](https://github.com/hq450/fancyss)
-- Windows
-  - [v2rayN](https://github.com/2dust/v2rayN)
-  - [Furious](https://github.com/LorenEteval/Furious)
-  - [Invisible Man - Xray](https://github.com/InvisibleManVPN/InvisibleMan-XRayClient)
-  - [AnyPortal](https://github.com/AnyPortal/AnyPortal)
-  - [GenyConnect](https://github.com/genyleap/GenyConnect)
-  - [OneXray](https://github.com/OneXray/OneXray)
-  - [XrayUI-dev](https://github.com/PhoenixNil/XrayUI-dev)
-- Android
-  - [v2rayNG](https://github.com/2dust/v2rayNG)
-  - [X-flutter](https://github.com/XTLS/X-flutter)
-  - [SaeedDev94/Xray](https://github.com/SaeedDev94/Xray)
-  - [SimpleXray](https://github.com/lhear/SimpleXray)
-  - [XrayFA](https://github.com/Q7DF1/XrayFA)
-  - [AnyPortal](https://github.com/AnyPortal/AnyPortal)
-  - [OneXray](https://github.com/OneXray/OneXray)
-  - [AsteriskNG](https://github.com/Asterisk4Magisk/AsteriskNG)
-- iOS & macOS arm64 & tvOS
-  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215) | [Happ RU](https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973) | [Happ tvOS](https://apps.apple.com/us/app/happ-proxy-utility-for-tv/id6748297274)
-  - [Streisand](https://apps.apple.com/app/streisand/id6450534064)
-  - [OneXray](https://github.com/OneXray/OneXray)
-  - [INCY](https://apps.apple.com/en/app/incy/id6756943388)
-- macOS arm64 & x64
-  - [Happ](https://apps.apple.com/app/happ-proxy-utility/id6504287215) | [Happ RU](https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973)
-  - [V2rayU](https://github.com/yanue/V2rayU)
-  - [V2RayXS](https://github.com/tzmax/V2RayXS)
-  - [Furious](https://github.com/LorenEteval/Furious)
-  - [OneXray](https://github.com/OneXray/OneXray)
-  - [GoXRay](https://github.com/goxray/desktop)
-  - [AnyPortal](https://github.com/AnyPortal/AnyPortal)
-  - [v2rayN](https://github.com/2dust/v2rayN)
-  - [GenyConnect](https://github.com/genyleap/GenyConnect)
-  - [INCY](https://apps.apple.com/en/app/incy/id6756943388)
-- Linux
-  - [v2rayA](https://github.com/v2rayA/v2rayA)
-  - [Furious](https://github.com/LorenEteval/Furious)
-  - [GorzRay](https://github.com/ketetefid/GorzRay)
-  - [GoXRay](https://github.com/goxray/desktop)
-  - [AnyPortal](https://github.com/AnyPortal/AnyPortal)
-  - [v2rayN](https://github.com/2dust/v2rayN)
-  - [GenyConnect](https://github.com/genyleap/GenyConnect)
-  - [OneXray](https://github.com/OneXray/OneXray)
-- HarmonyOS
-  - [Hey](https://github.com/popsiclelmlm/Hey)
-
-## Others that support VLESS, XTLS, REALITY, XUDP, PLUX...
-
-- iOS & macOS arm64 & tvOS
-  - [Anywhere](https://github.com/NodePassProject/Anywhere)
-  - [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118)
-  - [Loon](https://apps.apple.com/us/app/loon/id1373567447)
-  - [Egern](https://apps.apple.com/us/app/egern/id1616105820)
-  - [Quantumult X](https://apps.apple.com/us/app/quantumult-x/id1443988620)
-- Xray Tools
-  - [xray-knife](https://github.com/lilendian0x00/xray-knife)
-  - [xray-checker](https://github.com/kutovoys/xray-checker)
-- Xray Wrapper
-  - [XTLS/libXray](https://github.com/XTLS/libXray)
-  - [xtls-sdk](https://github.com/remnawave/xtls-sdk)
-  - [xtlsapi](https://github.com/hiddify/xtlsapi)
-  - [AndroidLibXrayLite](https://github.com/2dust/AndroidLibXrayLite)
-  - [flutter_vless](https://github.com/XIIIFOX/flutter_vless)
-  - [Xray-core-python](https://github.com/LorenEteval/Xray-core-python)
-  - [xray-api](https://github.com/XVGuardian/xray-api)
-- [XrayR](https://github.com/XrayR-project/XrayR)
-  - [XrayR-release](https://github.com/XrayR-project/XrayR-release)
-  - [XrayR-V2Board](https://github.com/missuo/XrayR-V2Board)
-- Cores
-  - [Amnezia VPN](https://github.com/amnezia-vpn)
-  - [mihomo](https://github.com/MetaCubeX/mihomo)
-  - [sing-box](https://github.com/SagerNet/sing-box)
-
-## Contributing
-
-[Code of Conduct](https://github.com/XTLS/Xray-core/blob/main/CODE_OF_CONDUCT.md)
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/XTLS/Xray-core)
-
-## Credits
-
-- [Xray-core v1.0.0](https://github.com/XTLS/Xray-core/releases/tag/v1.0.0) was forked from [v2fly-core 9a03cc5](https://github.com/v2fly/v2ray-core/commit/9a03cc5c98d04cc28320fcee26dbc236b3291256), and we have made & accumulated a huge number of enhancements over time, check [the release notes for each version](https://github.com/XTLS/Xray-core/releases).
-- For third-party projects used in [Xray-core](https://github.com/XTLS/Xray-core), check your local or [the latest go.mod](https://github.com/XTLS/Xray-core/blob/main/go.mod).
-
-### Bundled Third-Party Components Redistribution
-
-**Certain optional features dynamically load third-party components. These optional components are separate works distributed under their own licenses, and are bundled into the ZIP package for ease of use. Users may replace these components under the licenses from these components.**
-
-These components include:
-
-#### Wintun
-
-This distribution contains unmodified official precompiled and pre-signed Wintun binaries.
-
-- Project: Wintun
-- Copyright: Copyright (C) 2018-2021 WireGuard LLC. All Rights Reserved.
-- Redistribution License: Prebuilt Binaries License (PBL) bundled with official precompiled and pre-signed binaries from wintun.net
-- Component(s): wintun.dll
-- Source: https://www.wintun.net/
-- Included in:
-  - Windows x86 (windows-32, win7-32)
-  - Windows x86-64 (windows-64, win7-64)
-  - Windows AArch64 (windows-arm64)
-- Notes: Wintun is an optional runtime-loaded component only used for TUN inbound functionality on supported Windows platforms.
-
-## One-line Compilation
-
-### Windows (PowerShell)
-
-```powershell
-$env:CGO_ENABLED=0
-go build -o xray.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -v ./main
-```
-
-### Linux / macOS
-
-```bash
-CGO_ENABLED=0 go build -o xray -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -v ./main
-```
-
-### Reproducible Releases
-
-Make sure that you are using the same Go version, and remember to set the git commit id (7 bytes):
-
-```bash
-CGO_ENABLED=0 go build -o xray -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=REPLACE -s -w -buildid=" -v ./main
-```
-
-For Android:
-
-```bash
-GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=/path/to/aarch64-linux-android24-clang go build -o xray -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=REPLACE -s -w -buildid= -checklinkname=0" -v ./main
-GOOS=android GOARCH=amd64 CGO_ENABLED=1 CC=/path/to/x86_64-linux-android24-clang go build -o xray -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=REPLACE -s -w -buildid= -checklinkname=0" -v ./main
-```
-
-If you are compiling a 32-bit MIPS/MIPSLE target, use this command instead:
-
-```bash
-CGO_ENABLED=0 go build -o xray -trimpath -buildvcs=false -gcflags="-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=REPLACE -s -w -buildid=" -v ./main
-```
-
-## Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/XTLS/Xray-core.svg)](https://starchart.cc/XTLS/Xray-core)
+Mozilla Public License 2.0. See [LICENSE](LICENSE). XTLS attribution and upstream history are preserved.
